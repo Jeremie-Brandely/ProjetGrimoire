@@ -15,7 +15,7 @@ router.use((req, res, next) => {
  
 router.get('/', auth, bookCtrl.getAllBooks);
 router.post('/', auth, bookCtrl.createBooks);
-router.get('/:id', auth, bookCtrl.getOneBooks);
+router.get('/:id', auth, bookCtrl.getOneBook);
 router.put('/:id', auth, bookCtrl.modifyBooks);
 router.delete('/:id', auth, bookCtrl.deleteBooks);
 
