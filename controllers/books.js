@@ -1,6 +1,51 @@
 const Book = require("../models/Books");
 const fs = require("fs");
+const sharp= require("sharp");
 
+exports.postRating = (req, res, next) => {
+  const user = req.body.userId;
+  if (user !== req.auth.userId) {
+    res.status(401).json({ message: "Not authorized" })
+  } else {
+    Book.findOne({ _id: req.params.id })
+    .then(book => {
+      if (book.ratings.find(rating => rating.userId === user)) {
+        res.status(401).json({ message: "Book already Rated" })
+      } else {
+        const newRating = {
+          userId: user,
+          grade: req.body.rating,
+          _id: req.body._id
+        };
+        const updateRatings = [
+          ...book.ratings,
+          newRating
+        ];
+        function calcAverageRating(ratings) {
+          const sumRatings = ratings.reduce((total, rate) => total + rate.grade, 0);
+          const average = sumRatings / ratings.length;
+          return parseFloat(average.toFixed(2));
+        };
+        const updateAverageRating = calcAverageRating(updateRatings);
+        Book.findOneAndUpdate(
+          {_id: req.params.id, "ratings.userId": { $ne: user } },
+          { $push: { ratings: newRating }, averageRating: updateAverageRating },
+          { new: true }
+        )
+        .then(updatedBook => res.status(201).json(updatedBook))
+        .catch(error => res.status(401).json ({ error }));
+      };
+    })
+    .catch(error => res.status(401).json({ error }));
+  }
+
+};
+
+exports.getBooksWithBestRating = (req, res, next) => {
+  Book.find().sort({ averageRating: -1 }).limit(3)
+  .then(bestRatedBook => res.status(200).json(bestRatedBook))
+  .catch(error => res.status(400).json({ error }))
+};
 
 exports.getAllBooks = (req, res, next) => {
   Book.find()
@@ -13,6 +58,13 @@ exports.createBook = (req, res, next) => {
   const bookObject = JSON.parse(req.body.book);
   delete bookObject._id;
   delete bookObject._userId;
+  // const imgUrl = `${req.protocol}://${req.get('host')}/images/${req.file.filename}`;
+  
+  // sharp(req.file.filename)
+  // .resize(320, 240)
+  // .toFile('output.webp', (err, info) => { console.log(err, info) });
+
+
   const book = new Book({
     ...bookObject,
     userId: req.auth.userId,
@@ -35,7 +87,7 @@ exports.getOneBook = (req, res, next) => {
 
 exports.modifyBook = (req, res, next) => {
     const bookObject = req.file ? {
-      ...JSON.parse(req.body.thing),
+      ...JSON.parse(req.body.book),
       imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
     } : { ...req.body };
 
@@ -45,12 +97,11 @@ exports.modifyBook = (req, res, next) => {
     if (book.userId != req.auth.userId) {
       res.status(401).json({ message : 'Not authorized'});
   } else {
-      Book.updateOne({ _id: req.params.id}, { ...thingObject, _id: req.params.id})
+      Book.updateOne({ _id: req.params.id}, { ...bookObject, _id: req.params.id})
       .then(() => res.status(200).json({message : 'Livre modifié!'}))
       .catch(error => res.status(401).json({ error }));
   }
 })
-
 .catch((error) => {
   res.status(400).json({ error });
 });
