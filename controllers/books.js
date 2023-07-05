@@ -1,6 +1,6 @@
 const Book = require("../models/Books");
 const fs = require("fs");
-const sharp= require("sharp");
+
 
 exports.postRating = (req, res, next) => {
   const user = req.body.userId;
@@ -58,18 +58,12 @@ exports.createBook = (req, res, next) => {
   const bookObject = JSON.parse(req.body.book);
   delete bookObject._id;
   delete bookObject._userId;
-  // const imgUrl = `${req.protocol}://${req.get('host')}/images/${req.file.filename}`;
-  
-  // sharp(req.file.filename)
-  // .resize(320, 240)
-  // .toFile('output.webp', (err, info) => { console.log(err, info) });
-
-
+   
   const book = new Book({
     ...bookObject,
     userId: req.auth.userId,
-    imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
-  });
+    imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}.webp`
+  })
 
     book.save()
         .then(() => { res.status(201).json({ message: 'Livre enregistré !'})})
